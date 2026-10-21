@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <h1>Send to Scribe</h1>
+
+    <details id="settings">
+      <summary>Settings</summary>
+      <label for="email">Kindle email</label>
+      <div class="row">
+        <input id="email" type="email" placeholder="you_abc123@kindle.com" />
+        <button id="save">Save</button>
+      </div>
+      <p class="hint" id="email-hint">Find it at amazon.com/myk → Preferences → Personal Document Settings.</p>
+    </details>
+
+    <textarea id="links" placeholder="Paste one or more links (any text works, links are detected)"></textarea>
+    <div class="row">
+      <button id="add-tab" class="secondary">+ Current tab</button>
+      <select id="mode">
+        <option value="list">Add to reading list</option>
+        <option value="separate">Send as separate documents</option>
+        <option value="bundle">Send as one bundle</option>
+      </select>
+      <button id="send">Send</button>
+    </div>
+    <p class="hint" id="message"></p>
+
+    <section>
+      <div class="row section-head">
+        <h2 id="list-count">Reading list</h2>
+        <button id="list-send">Send reading list</button>
+      </div>
+      <p class="hint" id="list-hint"></p>
+      <ul id="list-items" class="items"></ul>
+      <button id="list-clear" class="link">Clear list</button>
+    </section>
+
+    <section>
+      <h2>Recent activity</h2>
+      <ul id="jobs" class="items"></ul>
+    </section>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "send-to-scribe-server",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "bun index.js" },
+  "dependencies": {
+    "linkedom": "0.18.13",
+    "nodemailer": "10.1.1"
+  }
+}

@@ -1,0 +1,138 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font: 16px/1.45 -apple-system, system-ui, sans-serif;
+  color: #1d1d1f;
+  background: #fff;
+}
+main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
+}
+h1 {
+  font-size: 22px;
+  margin: 0 0 12px;
+}
+h2 {
+  font-size: 17px;
+  margin: 0;
+}
+section {
+  margin-top: 24px;
+}
+textarea,
+input {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid #c7c7cc;
+  border-radius: 10px;
+}
+textarea {
+  height: 96px;
+  resize: vertical;
+}
+label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 14px;
+  color: #444;
+}
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #1d1d1f;
+  color: #fff;
+}
+button.secondary {
+  background: #ececf0;
+  color: #1d1d1f;
+}
+button.link {
+  background: none;
+  color: #8a8a8e;
+  font-weight: 400;
+  padding: 6px 4px;
+}
+button:disabled {
+  opacity: 0.45;
+}
+.buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.buttons #add {
+  flex: 1;
+}
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.hint {
+  color: #6e6e73;
+  font-size: 14px;
+  margin: 6px 0 0;
+}
+.hint.error {
+  color: #c0392b;
+}
+.notice {
+  background: #eef6ee;
+  color: #2e7d32;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin: 0 0 12px;
+}
+.items {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+.items li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid #ececf0;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.state {
+  display: block;
+  font-size: 13px;
+  color: #6e6e73;
+}
+.state.sent {
+  color: #2e7d32;
+}
+.state.failed {
+  color: #c0392b;
+}
+details {
+  margin-top: 28px;
+}
+summary {
+  font-weight: 600;
+}
+#save-settings,
+#login-btn {
+  margin-top: 14px;
+  width: 100%;
+}

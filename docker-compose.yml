@@ -1,0 +1,24 @@
+services:
+  send-to-scribe:
+    build: .
+    container_name: send-to-scribe
+    restart: unless-stopped
+    env_file: .env # APP_TOKEN, never committed
+    volumes:
+      - send-to-scribe-data:/data
+    networks:
+      - coolify
+    labels:
+      caddy: scribe.upliftedconsulting.com
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 60s
+      timeout: 5s
+
+volumes:
+  send-to-scribe-data:
+
+networks:
+  coolify:
+    external: true

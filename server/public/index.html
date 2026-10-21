@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Scribe" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <link rel="stylesheet" href="/app.css" />
+    <title>Send to Scribe</title>
+  </head>
+  <body>
+    <main>
+      <h1>Send to Scribe</h1>
+
+      <section id="login" hidden>
+        <p>Paste your login link to unlock this device.</p>
+        <input id="token" type="password" autocomplete="off" placeholder="https://scribe.upliftedconsulting.com/login?token=…" />
+        <button id="login-btn">Unlock</button>
+        <p class="hint error" id="login-msg"></p>
+      </section>
+
+      <div id="app" hidden>
+        <p class="notice" id="notice" hidden></p>
+
+        <textarea id="links" placeholder="Paste one or more article links"></textarea>
+        <div class="buttons">
+          <button id="paste" class="secondary">Paste</button>
+          <button id="add">Add to reading list</button>
+          <button id="send-now" class="secondary">Send now</button>
+        </div>
+        <p class="hint" id="message"></p>
+
+        <section>
+          <div class="section-head">
+            <h2 id="list-count">Reading list</h2>
+            <button id="list-send">Send reading list</button>
+          </div>
+          <p class="hint" id="list-hint"></p>
+          <ul id="list-items" class="items"></ul>
+          <button id="list-clear" class="link">Clear list</button>
+        </section>
+
+        <section>
+          <h2>Recent activity</h2>
+          <ul id="jobs" class="items"></ul>
+        </section>
+
+        <details id="settings">
+          <summary>Settings</summary>
+          <label for="kindle-email">Kindle email</label>
+          <input id="kindle-email" type="email" placeholder="something@kindle.com" />
+          <label for="gmail-user">Gmail that sends (approved in Amazon)</label>
+          <input id="gmail-user" type="email" placeholder="you@gmail.com" />
+          <label for="gmail-pass">Gmail app password</label>
+          <input id="gmail-pass" type="password" autocomplete="off" placeholder="16-letter app password" />
+          <p class="hint">Create one at myaccount.google.com/apppasswords.</p>
+          <label for="substack-sid">Substack login (for paid posts)</label>
+          <p class="hint" id="substack-status"></p>
+          <input id="substack-sid" type="password" autocomplete="off" placeholder="Synced from Chrome automatically" />
+          <button id="save-settings">Save settings</button>
+          <p class="hint" id="settings-msg"></p>
+        </details>
+      </div>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
