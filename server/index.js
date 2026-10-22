@@ -1,5 +1,6 @@
 // Send to Scribe server: the phone web app + the shared reading list for the Chrome extension.
 // Runs the same article pipeline as the extension (extension/lib), with server stand-ins for browser APIs.
+// No login: the container listens on 127.0.0.1 only and `tailscale serve` forwards port 443 from your tailnet.
 import { join } from "node:path";
 import { FragmentSafeDOMParser } from "./dom.js";
 import nodemailer from "nodemailer";
@@ -18,12 +19,12 @@ setJpegConverter(ffmpegToJpeg);
 setPaidPostFallback(fetchPaidPostWithCookie);
 
 const PORT = Number(process.env.PORT || 3000);
-// Only reachable through `tailscale serve`, which adds the caller's Tailscale login to every request.
-const OWNER_LOGIN = process.env.OWNER_LOGIN || "";
+// HTTPS with the scribe.upliftedconsulting.com certificate (issued by lego, mounted at /certs).
+const TLS_CERT = process.env.TLS_CERT;
+const TLS_KEY = process.env.TLS_KEY;
 const PUBLIC_DIR = join(import.meta.dir, "public");
 const KINDLE_EMAIL = /^[^@\s]+@(free\.)?kindle\.com$/i;
 
-if (!OWNER_LOGIN.includes("@")) throw new Error("Set OWNER_LOGIN (your Tailscale login email)");
 
 /** Paid Substack posts: retry with your Substack login cookie (synced from Chrome or pasted in Settings). */
 async function fetchPaidPostWithCookie({ origin, slug, post }) {
@@ -123,10 +124,6 @@ function updateSettings(body) {
 
 // ---- HTTP ----------------------------------------------------------------------------------
 
-function isAuthorized(req) {
-  return req.headers.get("tailscale-user-login")?.toLowerCase() === OWNER_LOGIN.toLowerCase();
-}
-
 const json = (data, status = 200) => Response.json(data, { status });
 const redirect = (location, headers = {}) => new Response(null, { status: 303, headers: { Location: location, ...headers } });
 
@@ -140,13 +137,13 @@ const STATIC = { "/": "index.html", "/app.js": "app.js", "/app.css": "app.css", 
 
 Bun.serve({
   port: PORT,
+  tls: TLS_CERT && TLS_KEY ? { cert: Bun.file(TLS_CERT), key: Bun.file(TLS_KEY) } : undefined,
   async fetch(req) {
     const url = new URL(req.url);
     const path = url.pathname;
 
     if (path === "/healthz") return new Response("ok");
 
-    if (!isAuthorized(req)) return path.startsWith("/api/") ? json({ ok: false, error: "Not allowed" }, 403) : new Response("Not allowed", { status: 403 });
     if (req.method === "GET" && STATIC[path]) return new Response(Bun.file(join(PUBLIC_DIR, STATIC[path])));
 
     // iOS Shortcut entry point: /add?url=…  (or /add?url=…&send=1 to send straight away)

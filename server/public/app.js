@@ -32,11 +32,6 @@ async function api(path, body) {
     headers: body ? { "Content-Type": "application/json" } : {},
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 403) {
-    $("app").hidden = true;
-    $("blocked").hidden = false;
-    throw new Error("Not allowed");
-  }
   return res.json();
 }
 
@@ -44,7 +39,6 @@ async function refresh() {
   clearTimeout(pollTimer);
   try {
     const data = await api("/api/state");
-    $("blocked").hidden = true;
     $("app").hidden = false;
     render(data);
   } catch {
