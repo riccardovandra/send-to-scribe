@@ -131,8 +131,7 @@ details {
 summary {
   font-weight: 600;
 }
-#save-settings,
-#login-btn {
+#save-settings {
   margin-top: 14px;
   width: 100%;
 }

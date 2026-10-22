@@ -15,7 +15,6 @@ async function init() {
     history.replaceState(null, "", "/");
   }
 
-  $("login-btn").addEventListener("click", login);
   $("paste").addEventListener("click", pasteFromClipboard);
   $("add").addEventListener("click", () => submitLinks("/api/list"));
   $("send-now").addEventListener("click", () => submitLinks("/api/send"));
@@ -33,9 +32,10 @@ async function api(path, body) {
     headers: body ? { "Content-Type": "application/json" } : {},
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401 && path !== "/api/login") {
-    showLogin();
-    throw new Error("Not logged in");
+  if (res.status === 403) {
+    $("app").hidden = true;
+    $("blocked").hidden = false;
+    throw new Error("Not allowed");
   }
   return res.json();
 }
@@ -44,28 +44,13 @@ async function refresh() {
   clearTimeout(pollTimer);
   try {
     const data = await api("/api/state");
-    $("login").hidden = true;
+    $("blocked").hidden = true;
     $("app").hidden = false;
     render(data);
   } catch {
     return;
   }
   if (document.visibilityState === "visible") pollTimer = setTimeout(refresh, POLL_MS);
-}
-
-function showLogin() {
-  $("app").hidden = true;
-  $("login").hidden = false;
-}
-
-async function login() {
-  // Accept the whole login link as well as the bare token.
-  const value = $("token").value.trim();
-  const token = value.includes("token=") ? new URL(value).searchParams.get("token") : value;
-  const response = await api("/api/login", { token });
-  if (!response.ok) return ($("login-msg").textContent = response.error);
-  $("token").value = "";
-  refresh();
 }
 
 async function pasteFromClipboard() {

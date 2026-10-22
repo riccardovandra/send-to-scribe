@@ -3,11 +3,11 @@
 Two parts sharing one reading list:
 
 - `extension/`: the Chrome extension (Mac). Load unpacked from this folder (needs `extension/config.json`, not in git).
-- `server/`: phone web app + shared reading list API, live at https://scribe.upliftedconsulting.com (VPS, Docker, `docker compose up -d --build`). Reuses `extension/lib` for article extraction and EPUB building.
+- `server/`: phone web app + shared reading list API, at https://contabo-vps.tailff5ead.ts.net:7443, tailnet only (VPS, Docker, `docker compose up -d --build`, then `tailscale serve --bg --https=7443 http://127.0.0.1:8790`). Reuses `extension/lib` for article extraction and EPUB building.
 
 ## Phone
 
-- Open your login link once in Safari (`/login?token=…`, token in `.env` on the VPS). That unlocks the device for a year.
+- Tailscale must be on. No login: the server only answers requests that come through `tailscale serve` from `OWNER_LOGIN`.
 - Share → **Send to Scribe** shortcut adds the article to the reading list. Or open the web app and paste links.
 - Settings (in the web app, one time): Kindle email, sending Gmail, Gmail app password.
 - Paid Substack posts on the phone use your Substack login. The Chrome extension syncs it to the server automatically.
@@ -15,7 +15,7 @@ Two parts sharing one reading list:
 ## Server
 
 - State (settings, reading list, recent jobs) is one JSON file in the `send-to-scribe-data` Docker volume.
-- Secrets: `APP_TOKEN` in `.env` (git-ignored). Gmail app password and Substack cookie are stored in the data volume only.
+- Access: container listens on 127.0.0.1 only; `OWNER_LOGIN` in `.env` (git-ignored) is the only Tailscale user allowed. Gmail app password and Substack cookie are stored in the data volume only.
 - Dependencies pinned exactly: `linkedom` 0.18.13 and `nodemailer` 10.1.1. `bunfig.toml` skips releases newer than 7 days.
 
 ## Extension

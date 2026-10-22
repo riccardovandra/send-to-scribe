@@ -3,14 +3,12 @@ services:
     build: .
     container_name: send-to-scribe
     restart: unless-stopped
-    env_file: .env # APP_TOKEN, never committed
+    env_file: .env # OWNER_LOGIN, never committed
     volumes:
       - send-to-scribe-data:/data
-    networks:
-      - coolify
-    labels:
-      caddy: scribe.upliftedconsulting.com
-      caddy.reverse_proxy: "{{upstreams 3000}}"
+    # Localhost only. Published to your tailnet with: tailscale serve --bg --https=7443 http://127.0.0.1:8790
+    ports:
+      - "127.0.0.1:8790:3000"
     healthcheck:
       test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 60s
@@ -18,7 +16,3 @@ services:
 
 volumes:
   send-to-scribe-data:
-
-networks:
-  coolify:
-    external: true

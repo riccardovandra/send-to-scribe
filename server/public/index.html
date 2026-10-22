@@ -15,12 +15,7 @@
     <main>
       <h1>Send to Scribe</h1>
 
-      <section id="login" hidden>
-        <p>Paste your login link to unlock this device.</p>
-        <input id="token" type="password" autocomplete="off" placeholder="https://scribe.upliftedconsulting.com/login?token=…" />
-        <button id="login-btn">Unlock</button>
-        <p class="hint error" id="login-msg"></p>
-      </section>
+      <p class="hint error" id="blocked" hidden>Can't reach your server. Turn on Tailscale on this device and reload.</p>
 
       <div id="app" hidden>
         <p class="notice" id="notice" hidden></p>

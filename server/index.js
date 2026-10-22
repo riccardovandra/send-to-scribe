@@ -1,6 +1,5 @@
 // Send to Scribe server: the phone web app + the shared reading list for the Chrome extension.
 // Runs the same article pipeline as the extension (extension/lib), with server stand-ins for browser APIs.
-import { timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import { FragmentSafeDOMParser } from "./dom.js";
 import nodemailer from "nodemailer";
@@ -19,12 +18,12 @@ setJpegConverter(ffmpegToJpeg);
 setPaidPostFallback(fetchPaidPostWithCookie);
 
 const PORT = Number(process.env.PORT || 3000);
-const APP_TOKEN = process.env.APP_TOKEN || "";
+// Only reachable through `tailscale serve`, which adds the caller's Tailscale login to every request.
+const OWNER_LOGIN = process.env.OWNER_LOGIN || "";
 const PUBLIC_DIR = join(import.meta.dir, "public");
-const COOKIE = "sts_token";
 const KINDLE_EMAIL = /^[^@\s]+@(free\.)?kindle\.com$/i;
 
-if (APP_TOKEN.length < 32) throw new Error("Set APP_TOKEN (at least 32 characters)");
+if (!OWNER_LOGIN.includes("@")) throw new Error("Set OWNER_LOGIN (your Tailscale login email)");
 
 /** Paid Substack posts: retry with your Substack login cookie (synced from Chrome or pasted in Settings). */
 async function fetchPaidPostWithCookie({ origin, slug, post }) {
@@ -125,18 +124,9 @@ function updateSettings(body) {
 // ---- HTTP ----------------------------------------------------------------------------------
 
 function isAuthorized(req) {
-  const header = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  const cookie = req.headers.get("cookie")?.match(new RegExp(`${COOKIE}=([^;]+)`))?.[1];
-  return [header, cookie].some((token) => token && safeEqual(decodeURIComponent(token), APP_TOKEN));
+  return req.headers.get("tailscale-user-login")?.toLowerCase() === OWNER_LOGIN.toLowerCase();
 }
 
-function safeEqual(a, b) {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
-const loginCookie = (token) => `${COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`;
 const json = (data, status = 200) => Response.json(data, { status });
 const redirect = (location, headers = {}) => new Response(null, { status: 303, headers: { Location: location, ...headers } });
 
@@ -154,22 +144,10 @@ Bun.serve({
     const url = new URL(req.url);
     const path = url.pathname;
 
-    if (req.method === "GET" && STATIC[path]) return new Response(Bun.file(join(PUBLIC_DIR, STATIC[path])));
     if (path === "/healthz") return new Response("ok");
 
-    // One-time login link: /login?token=… sets a year-long cookie.
-    if (path === "/login" && req.method === "GET") {
-      const token = url.searchParams.get("token") || "";
-      if (!safeEqual(token, APP_TOKEN)) return new Response("Wrong token", { status: 401 });
-      return redirect("/", { "Set-Cookie": loginCookie(token) });
-    }
-    if (path === "/api/login" && req.method === "POST") {
-      const { token = "" } = await req.json().catch(() => ({}));
-      if (!safeEqual(String(token).trim(), APP_TOKEN)) return json({ ok: false, error: "Wrong token" }, 401);
-      return new Response(JSON.stringify({ ok: true }), { headers: { "Set-Cookie": loginCookie(String(token).trim()), "Content-Type": "application/json" } });
-    }
-
-    if (!isAuthorized(req)) return path.startsWith("/api/") ? json({ ok: false, error: "Not logged in" }, 401) : redirect("/");
+    if (!isAuthorized(req)) return path.startsWith("/api/") ? json({ ok: false, error: "Not allowed" }, 403) : new Response("Not allowed", { status: 403 });
+    if (req.method === "GET" && STATIC[path]) return new Response(Bun.file(join(PUBLIC_DIR, STATIC[path])));
 
     // iOS Shortcut entry point: /add?url=…  (or /add?url=…&send=1 to send straight away)
     if (path === "/add" && req.method === "GET") {
