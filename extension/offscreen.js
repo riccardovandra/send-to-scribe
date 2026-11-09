@@ -1,7 +1,7 @@
 // Hidden page that does the heavy lifting: fetch, clean, build EPUB, send.
 // Lives in an offscreen document because service workers have no DOMParser.
 import { runSendJob, runReadingListJob, runBookJob } from "./lib/jobs.js";
-import { sendEpub, AuthError } from "./lib/gmail.js";
+import { sendToKindle, AuthError } from "./lib/gmail.js";
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.target !== "offscreen") return;
@@ -41,12 +41,12 @@ async function runBook({ jobId, kindleEmail, book }) {
   toBackground({ type: "book-done", jobId, error });
 }
 
-async function send(kindleEmail, { title, epub }) {
+async function send(kindleEmail, book) {
   for (const refresh of [false, true]) {
     const { token, error } = await chrome.runtime.sendMessage({ target: "background", type: "get-token", refresh });
     if (!token) throw new Error(error || "Could not sign in to Gmail");
     try {
-      return await sendEpub({ token, to: kindleEmail, title, epub });
+      return await sendToKindle({ token, to: kindleEmail, book });
     } catch (err) {
       if (!(err instanceof AuthError) || refresh) throw err;
     }

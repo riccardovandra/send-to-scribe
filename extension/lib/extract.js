@@ -34,8 +34,16 @@ const TEXT_NODE = 3;
 
 /**
  * @typedef {{title: string, subtitle: string, author: string, date: string, sourceUrl: string,
- *   language: string, coverUrl: string, root: Element, baseUrl: string}} Article
+ *   language: string, coverUrl: string, root: Element, baseUrl: string}} WebArticle
+ * @typedef {{title: string, subtitle: string, author: string, date: string, sourceUrl: string,
+ *   language: string, pdf: Uint8Array}} PdfArticle
+ * @typedef {WebArticle | PdfArticle} Article
  */
+
+/** True for a link that turned out to be a PDF: those are sent as-is, never turned into EPUB. */
+export function isPdf(article) {
+  return "pdf" in article;
+}
 
 /**
  * Fetch a URL and return a normalized article. Uses Substack's post API when the URL
@@ -155,13 +163,83 @@ export function isPreview(post) {
   return text.split(/\s+/).filter(Boolean).length < post.wordcount * 0.85;
 }
 
+function isPdfResponse(type, url) {
+  if (/application\/(x-)?pdf/i.test(type)) return true;
+  // Some servers send PDFs as a generic download.
+  return /octet-stream|binary/i.test(type) && /\.pdf$/i.test(new URL(url).pathname);
+}
+
+/** @returns {Promise<PdfArticle>} */
+async function fetchPdf(res, url) {
+  const pdf = new Uint8Array(await res.arrayBuffer());
+  if (String.fromCharCode(...pdf.subarray(0, 5)) !== "%PDF-") throw new Error("The link isn't a valid PDF");
+  const arxiv = await arxivMeta(url);
+  return {
+    title: arxiv?.title || pdfInfoTitle(pdf) || pdfFileTitle(res, url),
+    subtitle: "",
+    author: arxiv?.author || "",
+    date: "",
+    sourceUrl: url,
+    language: "en",
+    pdf,
+  };
+}
+
+/** arXiv PDFs rarely carry a readable title, so read it from the paper's abstract page. */
+async function arxivMeta(url) {
+  const match = new URL(url).hostname.endsWith("arxiv.org") && new URL(url).pathname.match(/^\/pdf\/(.+?)(\.pdf)?$/);
+  if (!match) return null;
+  try {
+    const res = await fetch(`https://arxiv.org/abs/${match[1]}`);
+    if (!res.ok) return null;
+    const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+    const meta = (name) => [...doc.querySelectorAll(`meta[name="${name}"]`)].map((el) => el.getAttribute("content")?.trim());
+    const title = meta("citation_title")[0];
+    if (!title) return null;
+    const authors = meta("citation_author").filter(Boolean);
+    // arXiv lists authors as "Last, First".
+    const names = authors.map((name) => name.split(",").map((part) => part.trim()).reverse().join(" "));
+    const author = names.length > 3 ? `${names[0]} et al.` : names.join(", ");
+    return { title, author };
+  } catch {
+    return null;
+  }
+}
+
+/** The /Title from the PDF's info dictionary, when it is stored as plain text. */
+function pdfInfoTitle(pdf) {
+  // The info dictionary sits near the start or the end; skip the middle of large files.
+  const decode = (bytes) => new TextDecoder("latin1").decode(bytes);
+  const text = pdf.length > 2e6 ? decode(pdf.subarray(0, 1e6)) + decode(pdf.subarray(-1e6)) : decode(pdf);
+  const raw = text.match(/\/Title\s*\(((?:\\.|[^\\)])*)\)/)?.[1];
+  if (!raw) return "";
+  let title = raw.replace(/\\([nrtbf()\\])/g, (_, c) => ({ n: " ", r: " ", t: " ", b: "", f: "" })[c] ?? c);
+  if (title.startsWith("\xfe\xff")) {
+    // UTF-16BE with a byte-order mark.
+    const codes = [];
+    for (let i = 2; i + 1 < title.length; i += 2) codes.push((title.charCodeAt(i) << 8) | title.charCodeAt(i + 1));
+    title = String.fromCharCode(...codes);
+  }
+  title = title.replace(/\s+/g, " ").trim();
+  return /^(untitled|microsoft word|document\d*)/i.test(title) ? "" : title;
+}
+
+/** Fall back to the download's file name. */
+function pdfFileTitle(res, url) {
+  const disposition = res.headers.get("content-disposition") || "";
+  const named = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)?.[1];
+  const segment = named || new URL(url).pathname.split("/").filter(Boolean).pop() || new URL(url).hostname;
+  return decodeURIComponent(segment).replace(/\.pdf$/i, "").replace(/[_+]/g, " ").trim();
+}
+
 async function fetchGenericPage(url) {
   const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error(`Page returned HTTP ${res.status}`);
   const type = res.headers.get("content-type") || "";
+  const pageUrl = res.url || url;
+  if (isPdfResponse(type, pageUrl)) return fetchPdf(res, pageUrl);
   if (!type.includes("html")) throw new Error(`Not a web page (${type || "unknown type"})`);
 
-  const pageUrl = res.url || url;
   const doc = new DOMParser().parseFromString(await res.text(), "text/html");
   // Without a <base>, relative links would resolve against the extension's own URL.
   const base = doc.createElement("base");

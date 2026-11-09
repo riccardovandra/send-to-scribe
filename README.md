@@ -35,6 +35,8 @@ Ways to send:
 - "+ Current tab" button.
 - Right-click a link or page → "Send link to Kindle" / "Send this page to Kindle".
 
+PDF links (for example `arxiv.org/pdf/...`) are sent as the original PDF, not converted, so you can write on them on the Scribe. arXiv papers get their real title and authors. In a bundle or the reading list, each PDF goes as its own email; the reading list sends a PDF only once, the first time after it was added.
+
 The toolbar badge shows how many are in progress, then ✓ or !.
 
 ## Reading list (one growing book)
