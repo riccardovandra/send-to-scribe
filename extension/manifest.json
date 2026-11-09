@@ -1,12 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Send to Scribe",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Paste article links (Substack and more) and send them to your Kindle as EPUB via Gmail.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt5dAYW08Cs0wE66PiOjSqS3ndRWobQTzM4gxqOZ3927G/f0cBZcqQi08YP33WM33kCtiJJdoRihH71XU321xTjkr5GJ6Ilg991PquS+VDJJVRUCsQ2PrqGoS4ytxKhkV0V8c2wck2tcTFzMw/lnDGRpK5w3u3g99e8nRcwPBbhnpctdBRp1KsLpYuwDwlcoLzy/TRXkB/SlbnrREQ8UlAroZy2pr4sZz96oukE0yLAced2z5pFsuI0XCBEN+dTqoJ5XOdh41dJEOF5VFuiEaUCTgansDsDx2/M9h0fJkUmysfclbxN0owoH59k2LWDet2rm2nwnAggx5j0UGpzkJ0wIDAQAB",
   "permissions": ["identity", "storage", "offscreen", "activeTab", "contextMenus", "scripting", "cookies"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["https://docs.upliftedconsulting.com/*", "http://localhost:8787/*", "http://127.0.0.1:8787/*"],
+      "js": ["up-docs.js"],
+      "run_at": "document_start"
+    }
+  ],
   "action": { "default_popup": "popup.html", "default_title": "Send to Scribe" },
   "oauth2": {
     "client_id": "557324876827-5tu6ospq8ugs4u1o7hu4d3gp1dmn1v6h.apps.googleusercontent.com",

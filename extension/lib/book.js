@@ -80,3 +80,66 @@ function plainText(root) {
   copy.querySelectorAll("br").forEach((br) => br.replaceWith(" "));
   return copy.textContent.replace(/\s+/g, " ").trim();
 }
+
+/**
+ * @typedef {{title: string, html: string, sourceUrl: string, depth: number}} DocChapter
+ * @typedef {{url: string, mediaType: string, base64: string}} DocImage
+ * @typedef {{title: string, author: string, language: string, chapters: DocChapter[], images: DocImage[]}} DocBook
+ */
+
+/**
+ * A doc from UP Docs: a linked contents page, then one chapter per tab in the order given.
+ * Images and diagrams UP Docs already fetched come with the book; others are downloaded here.
+ * @param {DocBook} book
+ * @returns {Promise<{title: string, epub: Uint8Array}>}
+ */
+export async function buildDocBook(book) {
+  const images = new ImageStore();
+  for (const image of book.images || []) {
+    images.provide(image.url, new Blob([base64ToBytes(image.base64)], { type: image.mediaType }));
+  }
+  const parser = new DOMParser();
+  const chapters = book.chapters.map((chapter) => {
+    const body = parser.parseFromString(`<body>${chapter.html}</body>`, "text/html").body;
+    return {
+      title: chapter.title,
+      subtitle: "",
+      author: "",
+      date: "",
+      sourceUrl: chapter.sourceUrl,
+      xhtml: toXhtml(body, chapter.sourceUrl, images),
+    };
+  });
+  await images.load();
+  chapters.forEach((chapter) => (chapter.xhtml = images.resolve(chapter.xhtml)));
+
+  const sent = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const count = book.chapters.length;
+  const epub = buildEpub({
+    title: book.title,
+    author: book.author || "UP Docs",
+    language: book.language || "en",
+    chapters,
+    images: images.files(),
+    cover: null,
+    contents: {
+      heading: book.title,
+      intro: `${count} chapter${count > 1 ? "s" : ""} · sent ${sent}. Tap a title to jump to it.`,
+      entries: book.chapters.map((chapter) => ({
+        title: chapter.title,
+        meta: "",
+        excerpt: "",
+        isNew: false,
+        depth: chapter.depth || 0,
+      })),
+    },
+  });
+  return { title: book.title, epub };
+}
+
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}

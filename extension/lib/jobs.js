@@ -1,7 +1,7 @@
 // The send workflows, shared by the Chrome extension (offscreen document) and the server.
 // Each takes callbacks for progress updates and for actually emailing the book.
 import { fetchArticle, PaywallError } from "./extract.js";
-import { buildBook, buildReadingList } from "./book.js";
+import { buildBook, buildReadingList, buildDocBook } from "./book.js";
 
 /**
  * @typedef {(book: {title: string, epub: Uint8Array}) => Promise<void>} SendBook
@@ -117,5 +117,24 @@ export async function runReadingListJob({ items, lastSentAt, update, listUpdate,
   } catch (error) {
     update({ state: "failed", detail: error.message });
     return null;
+  }
+}
+
+/**
+ * Build and send a doc from UP Docs as one book.
+ * @param {{book: import("./book.js").DocBook, update: Update, send: SendBook}} job
+ * @returns {Promise<string | null>} null when sent, otherwise why it failed
+ */
+export async function runBookJob({ book, update, send }) {
+  try {
+    update({ state: "working", detail: "Building EPUB" });
+    const built = await buildDocBook(book);
+    update({ detail: `Sending (${(built.epub.length / 1e6).toFixed(1)} MB)` });
+    await send(built);
+    update({ state: "sent", detail: `${book.chapters.length} chapter${book.chapters.length > 1 ? "s" : ""}` });
+    return null;
+  } catch (error) {
+    update({ state: "failed", detail: error.message });
+    return error.message;
   }
 }

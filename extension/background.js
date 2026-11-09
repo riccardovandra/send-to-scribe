@@ -49,6 +49,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     );
     return true;
   }
+  if (message.type === "send-book") {
+    sendBook(message.book).then(
+      () => sendResponse({ ok: true }),
+      (error) => sendResponse({ ok: false, error: error.message }),
+    );
+    return true;
+  }
+  if (message.type === "book-done") {
+    const pending = pendingBooks.get(message.jobId);
+    pendingBooks.delete(message.jobId);
+    if (pending) message.error ? pending.reject(new Error(message.error)) : pending.resolve();
+  }
   if (message.type === "list-add") {
     addToList(message.urls).then(sendResponse, (error) => sendResponse({ ok: false, error: error.message }));
     return true;
@@ -83,6 +95,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 async function startJob(urls, mode) {
   const items = urls.map((url) => ({ url, label: url, state: "queued", detail: "" }));
   await dispatchJob(items, (jobId, kindleEmail) => ({ type: "run-job", job: { jobId, urls, mode, kindleEmail } }));
+}
+
+// Books from UP Docs, keyed by job ID, waiting for the offscreen document to finish.
+const pendingBooks = new Map();
+
+/** A doc sent from UP Docs (see up-docs.js). Resolves once the book is emailed. */
+async function sendBook(book) {
+  if (!book?.title || !Array.isArray(book.chapters) || !book.chapters.length) {
+    throw new Error("UP Docs sent an empty book");
+  }
+  let done;
+  const finished = new Promise((resolve, reject) => (done = { resolve, reject }));
+  await dispatchJob([{ url: "", label: book.title, state: "queued", detail: "" }], (jobId, kindleEmail) => {
+    pendingBooks.set(jobId, done);
+    return { type: "run-book", job: { jobId, kindleEmail, book } };
+  });
+  return finished;
 }
 
 // Built here rather than on the server so paid posts use your browser login.

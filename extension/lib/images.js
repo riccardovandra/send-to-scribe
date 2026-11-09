@@ -17,6 +17,8 @@ export class ImageStore {
   /** @type {(ImageFile | null)[]} */
   #files = [];
   #compact;
+  /** @type {Map<string, Blob>} */
+  #provided = new Map();
 
   /** @param {{compact?: boolean}} [options] */
   constructor({ compact = false } = {}) {
@@ -32,6 +34,11 @@ export class ImageStore {
     return `@@IMG-${index}@@`;
   }
 
+  /** Supply an image's bytes up front, for images only the sender can fetch. */
+  provide(url, blob) {
+    this.#provided.set(url, blob);
+  }
+
   /** Download all registered images. Failed downloads are dropped. */
   async load() {
     this.#files = new Array(this.#urls.length).fill(null);
@@ -39,7 +46,9 @@ export class ImageStore {
     const worker = async () => {
       while (next < this.#urls.length) {
         const i = next++;
-        this.#files[i] = await loadImage(this.#urls[i], i, this.#compact).catch(() => null);
+        this.#files[i] = await loadImage(this.#urls[i], i, this.#compact, this.#provided.get(this.#urls[i])).catch(
+          () => null,
+        );
       }
     };
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
@@ -65,12 +74,19 @@ export class ImageStore {
   }
 }
 
-async function loadImage(url, index, compact) {
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) throw new Error(`Image HTTP ${res.status}`);
-  let blob = await res.blob();
+async function loadImage(url, index, compact, provided) {
+  let blob = provided;
+  if (!blob) {
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) throw new Error(`Image HTTP ${res.status}`);
+    blob = await res.blob();
+  }
   let type = blob.type.split(";")[0];
-  if (compact || !SUPPORTED[type] || blob.size > MAX_BYTES) {
+  if (type === "image/svg+xml" && typeof Image !== "undefined") {
+    // Kindle shows SVG unreliably, so diagrams become crisp PNGs.
+    blob = await svgToPng(blob);
+    type = "image/png";
+  } else if (compact || !SUPPORTED[type] || blob.size > MAX_BYTES) {
     blob = await convertToJpeg(blob, compact ? COMPACT : { maxWidth: MAX_WIDTH, quality: 0.85, grayscale: false });
     type = "image/jpeg";
   }
@@ -103,4 +119,27 @@ async function canvasToJpeg(blob, { maxWidth, quality, grayscale }) {
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   return canvas.convertToBlob({ type: "image/jpeg", quality });
+}
+
+const SVG_SCALE = 2;
+
+/** Draw an SVG at twice its size (capped at MAX_WIDTH) on white. Needs a DOM, so offscreen only. */
+async function svgToPng(blob) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const width = img.naturalWidth || 760;
+    const height = img.naturalHeight || 400;
+    const scale = Math.min(SVG_SCALE, MAX_WIDTH / width);
+    const canvas = new OffscreenCanvas(Math.round(width * scale), Math.round(height * scale));
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.convertToBlob({ type: "image/png" });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

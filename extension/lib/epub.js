@@ -21,6 +21,14 @@ pre { white-space: pre-wrap; font-size: 0.85em; }
 .toc .entry-meta { font-size: 0.85em; }
 .toc .entry-excerpt { font-size: 0.85em; font-style: italic; }
 .new { font-weight: bold; }
+.toc .depth-1 { margin-left: 1.5em; }
+.toc .depth-2 { margin-left: 3em; }
+.toc .depth-3 { margin-left: 4.5em; }
+table { border-collapse: collapse; margin: 1em 0; font-size: 0.9em; }
+th, td { border: 1px solid #888; padding: 0.25em 0.5em; text-align: left; vertical-align: top; }
+th { font-weight: bold; }
+code { font-family: monospace; font-size: 0.9em; }
+hr { border: 0; border-top: 1px solid #888; margin: 1.5em 0; }
 `;
 
 /**
@@ -118,8 +126,9 @@ function contentsXhtml(contents, chapterFiles, lang) {
   const items = contents.entries
     .map((entry, i) => {
       const flag = entry.isNew ? '<span class="new">NEW · </span>' : "";
-      return `<li><a class="entry-title" href="${chapterFiles[i].href}">${escapeXml(entry.title)}</a>
-<div class="entry-meta">${flag}${escapeXml(entry.meta)}</div>${
+      const depth = Math.min(3, Math.max(0, Number(entry.depth) || 0));
+      const meta = flag || entry.meta ? `\n<div class="entry-meta">${flag}${escapeXml(entry.meta)}</div>` : "";
+      return `<li${depth ? ` class="depth-${depth}"` : ""}><a class="entry-title" href="${chapterFiles[i].href}">${escapeXml(entry.title)}</a>${meta}${
         entry.excerpt ? `\n<div class="entry-excerpt">${escapeXml(entry.excerpt)}</div>` : ""
       }</li>`;
     })
