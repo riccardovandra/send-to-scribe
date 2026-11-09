@@ -7,7 +7,7 @@ import nodemailer from "nodemailer";
 import Readability from "../extension/lib/vendor/Readability.js";
 import { setPaidPostFallback } from "../extension/lib/extract.js";
 import { setJpegConverter } from "../extension/lib/images.js";
-import { assertEmailSize, fileName } from "../extension/lib/gmail.js";
+import { attachmentFor } from "../extension/lib/gmail.js";
 import { checkListItems, runReadingListJob, runSendJob } from "../extension/lib/jobs.js";
 import { ffmpegToJpeg } from "./convert.js";
 import { addListItems, createJob, save, state, updateListItem } from "./store.js";
@@ -43,10 +43,10 @@ async function fetchPaidPostWithCookie({ origin, slug, post }) {
   return null;
 }
 
-async function sendBook({ title, epub }) {
+async function sendBook(book) {
   const { kindleEmail, gmailUser, gmailAppPassword } = state.settings;
   if (!kindleEmail || !gmailUser || !gmailAppPassword) throw new Error("Finish Settings first (Kindle email, Gmail, app password)");
-  assertEmailSize(epub);
+  const { filename, contentType, bytes } = attachmentFor(book);
   const transport = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
@@ -56,9 +56,9 @@ async function sendBook({ title, epub }) {
   await transport.sendMail({
     from: gmailUser,
     to: kindleEmail,
-    subject: title,
+    subject: book.title,
     text: "Sent by Send to Scribe.",
-    attachments: [{ filename: fileName(title), content: Buffer.from(epub), contentType: "application/epub+zip" }],
+    attachments: [{ filename, content: Buffer.from(bytes), contentType }],
   });
 }
 
